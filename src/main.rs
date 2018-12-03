@@ -8,50 +8,10 @@ extern crate serde_json;
 extern crate serde_derive;
 
 mod beastio;
-use beastio::read_string;
-use beastio::read_int;
-use beastio::read_vec_of_strings;
-use beastio::keep_going;
+use beastio::*;
 
-#[derive(Serialize, Deserialize)]
-struct Monster
-{
-        name: String,
-        book: String,
-        page: u16,
-        threat: HashMap<String, String>,
-        bounty: u16,
-        armor: u16,
-        statistics: HashMap<String, u8>,
-        derived_statistics: HashMap<String, u8>,
-        monster_statistics: HashMap<String, String>,
-        organisation: MonsterOrg,
-        environment: Vec<String>,
-        tags: Vec<String>,
-        vulnerabilities: Vec<String>,
-        abilities: Vec<String>,
-        skills: HashMap<String, u8>,
-        weapons: Vec<Weapon>,
-        loot: Vec<String>
-}
-
-#[derive(Serialize, Deserialize)]
-struct MonsterOrg
-{
-        descriptor: String,
-        min: u8,
-        max: u8
-}
-
-
-#[derive(Serialize, Deserialize)]
-struct Weapon
-{
-        name: String,
-        damage: String,
-        effect: Vec<String>,
-        rof: u8
-}
+mod monster;
+use monster::*;
 
 fn main()
 {
@@ -88,48 +48,6 @@ fn main()
 
         serde_json::to_writer(outfile, &beastiary).unwrap();
 
-}
-
-fn build_monster(
-                name: String,
-                book: String,
-                page: u16,
-                threat: HashMap<String, String>,
-                bounty: u16,
-                armor: u16,
-                statistics: HashMap<String, u8>,
-                derived_statistics: HashMap<String, u8>,
-                monster_statistics: HashMap<String, String>,
-                organisation: MonsterOrg,
-                environment: Vec<String>,
-                tags: Vec<String>,
-                vulnerabilities: Vec<String>,
-                abilities: Vec<String>,
-                skills: HashMap<String, u8>,
-                weapons: Vec<Weapon>,
-                loot: Vec<String>
-                ) -> Monster
-{
-        Monster
-        {
-                name,
-                book,
-                page,
-                threat,
-                bounty,
-                armor,
-                statistics,
-                derived_statistics,
-                monster_statistics,
-                organisation,
-                environment,
-                tags,
-                vulnerabilities,
-                abilities,
-                skills,
-                weapons,
-                loot
-        }
 }
 
 fn enter_monster(
@@ -185,7 +103,7 @@ fn enter_monster(
         let org_descriptor = read_string("Organisation - Enter descriptor");
         let org_min = read_int("Organisation - Enter minimum number") as u8;
         let org_max = read_int("Organisation - Enter MAXIMUM number") as u8;
-        let organisation = MonsterOrg { descriptor: org_descriptor, min: org_min, max: org_max };
+        let organisation = MonsterOrg::new(org_descriptor, org_min, org_max);
 
         let environment = read_vec_of_strings("enter environments");
         let tags = read_vec_of_strings("enter tags");
@@ -210,12 +128,12 @@ fn enter_monster(
                 let w_damage = read_string("enter weapon damage");
                 let w_effect = read_vec_of_strings("enter effect names");
                 let w_rof = read_int("enter rate of fire") as u8;
-                weapons.push(Weapon {name: w_name, damage: w_damage, effect: w_effect, rof: w_rof});
+                weapons.push(Weapon::new(w_name, w_damage, w_effect, w_rof));
         }
 
         let loot = read_vec_of_strings("enter loot");
 
-        build_monster
+        Monster::new
         (
                 name,
                 book,
