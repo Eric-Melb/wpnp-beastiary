@@ -1,0 +1,9 @@
+[package]
+name = "app"
+version = "0.1.0"
+authors = ["Eric-Melb <38517573+Eric-Melb@users.noreply.github.com>"]
+
+[dependencies]
+serde = "1.0.80"
+serde_json = "1.0.33"
+serde_derive = "1.0.80"
