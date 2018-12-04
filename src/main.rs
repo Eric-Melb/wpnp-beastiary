@@ -10,12 +10,16 @@ extern crate serde_derive;
 mod beastio;
 use beastio::*;
 
+mod beastiary;
+use beastiary::*;
+
 mod monster;
 use monster::*;
 
+
 fn main()
 {
-        // for our struct's hashmaps - these could be structs themselves but then we couldn't use "ref"
+        // bunch of constants for the witcher
         let statistic_names = ["int", "ref", "dex", "body", "spd", "emp", "cra", "will", "luck"];
         let derived_statistic_names = ["stun", "run", "leap", "sta", "enc", "rec", "hp", "vigor"];
         let monster_statistic_names = ["height", "weight", "intelligence"];
@@ -25,7 +29,12 @@ fn main()
                 "dodge_or_escape", "athletics", "awareness", "stealth", "wilderness_survival",
                 "resist_magic", "resist_coercion", "endurance", "courage"];
 
-        let mut beastiary: Vec<Monster> = Vec::new();
+        let beastiary_json = "beastiary.json";
+        let after_read_json = "beastiary.json.backup";
+
+        // TODO - catch error if file doesn't exist and create a blank beastiary instead
+        let mut the_beastiary = Beastiary::new(beastiary_json, after_read_json);
+
         //let outfile = File::create("beastiary.json").unwrap();
         // TODO: need to load the file contents into the beastiary before we start so the json doesn't get fucked up
         let outfile = OpenOptions::new()
@@ -37,19 +46,20 @@ fn main()
 
         loop
         {
-                beastiary.push(enter_monster(statistic_names, derived_statistic_names, monster_statistic_names, skill_names));
+                the_beastiary.add_beast(enter_monster(statistic_names, derived_statistic_names, monster_statistic_names, skill_names));
+
 
                 if !keep_going()
                 {
                         break;
                 }
-
         }
 
-        serde_json::to_writer(outfile, &beastiary).unwrap();
+        serde_json::to_writer(outfile, &the_beastiary).unwrap();
 
 }
 
+// should be a method of monster?
 fn enter_monster(
         statistic_names: [&str; 9],
         derived_statistic_names: [&str; 8],

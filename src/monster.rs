@@ -5,23 +5,23 @@ use std::collections::HashMap;
 #[derive(Serialize, Deserialize)]
 pub struct Monster
 {
-        name: String,
-        book: String,
-        page: u16,
-        threat: HashMap<String, String>,
-        bounty: u16,
-        armor: u16,
-        statistics: HashMap<String, u8>,
-        derived_statistics: HashMap<String, u8>,
-        monster_statistics: HashMap<String, String>,
-        organisation: MonsterOrg,
-        environment: Vec<String>,
-        tags: Vec<String>,
-        vulnerabilities: Vec<String>,
-        abilities: Vec<String>,
-        skills: HashMap<String, u8>,
-        weapons: Vec<Weapon>,
-        loot: Vec<String>
+        pub name: String,
+        pub book: String,
+        pub page: u16,
+        pub threat: HashMap<String, String>,
+        pub bounty: u16,
+        pub armor: u16,
+        pub statistics: HashMap<String, u8>,
+        pub derived_statistics: HashMap<String, u8>,
+        pub monster_statistics: HashMap<String, String>,
+        pub organisation: MonsterOrg,
+        pub environment: Vec<String>,
+        pub tags: Vec<String>,
+        pub vulnerabilities: Vec<String>,
+        pub abilities: Vec<String>,
+        pub skills: HashMap<String, u8>,
+        pub weapons: Vec<Weapon>,
+        pub loot: Vec<String>
 }
 
 #[derive(Serialize, Deserialize)]
