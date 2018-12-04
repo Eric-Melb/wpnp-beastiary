@@ -16,6 +16,14 @@ use beastiary::*;
 mod monster;
 use monster::*;
 
+// TODO: replace many unwraps() with actual error handling
+
+// TODO: NEEDS MENU
+// Generate Encounter
+// Roll initiative
+// Make attacks
+// Record damage
+// Add to Beastiary
 
 fn main()
 {
@@ -35,8 +43,8 @@ fn main()
         // TODO - catch error if file doesn't exist and create a blank beastiary instead
         let mut the_beastiary = Beastiary::new(beastiary_json, after_read_json);
 
-        //let outfile = File::create("beastiary.json").unwrap();
-        // TODO: need to load the file contents into the beastiary before we start so the json doesn't get fucked up
+        the_beastiary.check_beasts();
+
         let outfile = OpenOptions::new()
                 .write(true)
                 .create(true)
@@ -48,6 +56,7 @@ fn main()
         {
                 the_beastiary.add_beast(enter_monster(statistic_names, derived_statistic_names, monster_statistic_names, skill_names));
 
+                the_beastiary.check_beasts();
 
                 if !keep_going()
                 {
@@ -55,7 +64,7 @@ fn main()
                 }
         }
 
-        serde_json::to_writer(outfile, &the_beastiary).unwrap();
+        serde_json::to_writer(outfile, &the_beastiary.beasts).unwrap();
 
 }
 

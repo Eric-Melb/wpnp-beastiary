@@ -12,7 +12,7 @@ use monster::*;
 pub struct Beastiary
 {
         // the string is their name
-        beasts: HashMap<String, Monster>
+        pub beasts: HashMap<String, Monster>
 }
 
 // TODO: refactor so that new() spawns an empty beastiary unless a hashmap of monsters was passed
@@ -41,9 +41,9 @@ impl Beastiary
                 beasts
         }
 
-        pub fn check_beasts(self)
+        pub fn check_beasts(&self)
         {
-                for (name, details) in self.beasts
+                for (name, details) in &self.beasts
                 {
                         println!("{} has {} health", name, details.derived_statistics["hp"]);
                 }
