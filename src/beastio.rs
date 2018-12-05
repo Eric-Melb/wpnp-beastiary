@@ -61,8 +61,8 @@ pub fn read_vec_of_strings(message: &str) -> Vec<String>
 pub fn keep_going() -> bool
 {
         let input = read_string("Do you want to enter another stat block?");
-        let firstchar = input.to_uppercase().chars().next().unwrap();
-        if firstchar == "Y".to_string().chars().next().unwrap()
+        let firstchar = read_first_char(input.to_uppercase());
+        if firstchar == read_first_char("Y".to_string())
         {
                 return true;
         }
@@ -70,4 +70,21 @@ pub fn keep_going() -> bool
         {
                 return false;
         }
+}
+
+pub fn read_first_char(c: String) -> char
+{
+        c.chars().next().unwrap()
+}
+
+pub fn print_menu(items: &Vec<(u8, &str)>) -> u8
+{
+        println!();
+
+        for (number, name) in items
+        {
+                println!("{} - {}", number, name);
+        }
+
+        read_int("Please choose a menu option: ") as u8
 }
