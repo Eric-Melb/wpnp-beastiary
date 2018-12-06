@@ -7,6 +7,16 @@ use beastio::*;
 
 use monster;
 
+const LOW_DIFFICULTY_ENCOUNTER_SIZE: u8 = 2;
+const MID_DIFFICULTY_ENCOUNTER_SIZE: u8 = 7;
+const HIGH_DIFFICULTY_ENCOUNTER_SIZE: u8 = 15;
+const NON_DIFFICULTY_ENCOUNTER_SIZE: u8 = 0;
+
+const EASY: &str = "easy";
+const MEDIUM: &str = "medium";
+const HARD: &str = "hard";
+
+
 struct Encounter
 {
 
@@ -48,12 +58,41 @@ struct PotentialEncounter
 
 }
 
+impl PotentialEncounter
+{
+        // should probably refactor this to use monster index so we don't need to run another loop
+        // small vec though
+        fn remove(&mut self, monster_name: &str)
+        {
+                let mut remove_index = -1;
+
+                for i in 0..(len(self.groups) - 1)
+                {
+                        if self.groups[i].1.name == monster_name.to_string()
+                        {
+                                remove_index = i;
+                        }
+                }
+
+                self.current_monster_points = self.current_monster_points - self.groups[remove_index].0;
+                self.groups.remove(remove_index);
+        }
+}
+
 fn get_number_of_players() -> u8
 {
         read_int("How many players will be facing this encounter") as u8
 }
 
-pub fn generate_encounter(the_beastiary: &Beastiary) -> PotentialEncounter
+pub fn generate_encounter(the_beastiary: &Beastiary)
+{
+        let working_encounter = generate_potential_encounter(the_beastiary);
+
+
+
+}
+
+fn generate_potential_encounter(the_beastiary: &Beastiary) -> PotentialEncounter
 {
         let number_of_easy_monsters = find_number_of_easy_monsters();
 
@@ -67,39 +106,98 @@ pub fn generate_encounter(the_beastiary: &Beastiary) -> PotentialEncounter
                 2 => (generate_mixed_monsters(the_beastiary, number_of_easy_monsters, complexity)),
                 3 => (generate_hard_solo(the_beastiary, number_of_easy_monsters, complexity))
         }
+}
 
+fn list_suitably_challenging_monsters(the_beastiary: &Beastiary, difficulty: &str, complexity: u8) -> Vec<Monster>
+{
+
+        let mut suitable_difficulty_monsters: Vec<Monster> = Vec::new();
+
+        for (name, creature) in the_beastiary.beasts
+        {
+                if creature.threat["difficulty"] == difficulty
+                {
+                        suitable_difficulty_monsters.push(creature);
+                }
+        }
+        // find monsters that meet our complexity requirements
+        let mut suitably_challenging_monsters: Vec<Monster> = Vec::new();
+
+        for creature in suitable_difficulty_mosnters
+        {
+                if compare_complexity(creature.threat["complexity"], complexity)
+                {
+                        suitable_difficulty_monsters.push(creature);
+                }
+        }
+
+        suitably_challenging_monsters
 }
 
 fn generate_easy_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
         // generate a potential pool of easy monsters
-        let mut easy_monsters: Vec<Monster> = Vec::new();
+        let suitably_challenging_monsters: Vec<Monster> =
+                list_suitably_challenging_monsters(the_beastiary,
+                                                   EASY,
+                                                   complexity);
 
-        for (name, creature) in the_beastiary.beasts
-        {
-                if creature.threat["difficulty"] == "easy"
-                {
-                        easy_monsters.push(creature);
-                }
-        }
-
-        // find easy monsters that meet our complexity requirements
-        let mut suitable_complexity_monsters: Vec<Monster> = Vec::new();
-
-        for creature in easy_monsters
-        {
-                if compare_complexity(creature.threat["complexity"], complexity)
-                {
-                        suitable_complexity_monsters.push(creature);
-                }
-        }
-
-        potential_encounter_builder
+        potential_encounter_builder(&suitably_challenging_monsters, number_of_easy_monsters)
 }
 
 fn generate_mixed_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
+        let mut easy_monsters = generate_easy_monsters(the_beastiary,
+                                                        number_of_easy_monsters,
+                                                        complexity);
+        let mut number_of_threes: u8 = 0;
+        let mut points_to_replace: u8 = 0;
+        let mut names_to_remove: Vec<String> = Vec::new();
 
+
+        // keep generating encounters filled with easy monsters until we have one that can validly be replaced with at least one medium monster
+        loop
+        {
+                // find the number of groups that have at least 3 monsters (i.e. could be replaced by a medium)
+                for (amount, monster_type) in easy_monsters.groups
+                {
+                        if amount > 3
+                        {
+                                number_of_threes = number_of_threes + 1;
+                                names_to_remove.push(monster_type.name);
+                        }
+                }
+
+                if number_of_threes != 0
+                {
+                        break;
+                }
+
+                // regenerate encounter if there's no 3s to replace [TODO: this will loop infinitely for 2 players in a non-combat party]
+                easy_monsters = generate_easy_monsters(the_beastiary, number_of_easy_monsters, complexity);
+        }
+
+        Rng::gen_range(points_to_replace, 0, number_of_threes);
+
+        // remove between 1 and number_of_threes groups (that can be validly removed)
+        for i in 0..points_to_replace
+        {
+                // monsters are already in a random order in the potential encounter so we can just iterate here
+                easy_monsters.remove(names_to_remove[i]);
+        }
+
+        // add in the replacement medium monsters
+        let mut medium_monsters = list_suitably_challenging_monsters(the_beastiary, MEDIUM, complexity);
+
+        potential_encounter_builder(&medium_monsters, points_to_replace);
+
+        join_potential_encounters(easy_monsters, medium_monsters)
+}
+
+fn join_potential_encounters(first_encounter: PotentialEncounter,
+                             second_encounter: PotentialEncounter) -> PotentialEncounter
+{
+        // TODO: the issues with this already, damn
 }
 
 fn generate_hard_solo(the_beastiary: &Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
@@ -107,7 +205,7 @@ fn generate_hard_solo(the_beastiary: &Beastiary, number_of_easy_monsters: u8, co
 
 }
 
-fn potential_encounter_builder(monsters: Vec<Monster>, budget: u8) -> PotentialEncounter
+fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
 {
         let mut groups: Vec<(u8, Monster)> = Vec::new();
         let mut current_monster_points = 0;
@@ -140,21 +238,14 @@ fn potential_encounter_builder(monsters: Vec<Monster>, budget: u8) -> PotentialE
 
 fn compare_complexity(creature_complexity: &str, desired_complexity: u8) -> bool
 {
-        let c_complexity = read_first_char(creature_complexity.to_string());
-
-        let random = read_first_char("R".to_string());
-        let simple = read_first_char("S".to_string());
-        let complex = read_first_char("C".to_string());
-        let difficult = read_first_char("D".to_string());
-
-        let complexity = match read_first_char(c_complexity)
+        // random complexity
+        if desired_complexity == 0
         {
-                random => 0,
-                simple => 1,
-                complex => 2,
-                difficult => 3,
-                _ => 0
-        };
+                return true;
+        }
+
+        // simple, complex, and difficult complexity
+        let complexity = convert_complexity(creature_complexity.to_string());
 
         if complexity == desired_complexity
         {
@@ -196,11 +287,11 @@ fn get_party_power() -> u8
 
         match read_first_char(power)
         {
-                low => 2,
-                mid => 5,
-                high => 10,
-                non_combat => 0,
-                _ => 2
+                low => LOW_DIFFICULTY_ENCOUNTER_SIZE,
+                mid => MID_DIFFICULTY_ENCOUNTER_SIZE,
+                high => HIGH_DIFFICULTY_ENCOUNTER_SIZE,
+                non_combat => NON_DIFFICULTY_ENCOUNTER_SIZE,
+                _ => LOW_DIFFICULTY_ENCOUNTER_SIZE
         }
 }
 
@@ -221,6 +312,11 @@ fn get_complexity() -> u8
         .to_upper_case()
         ;
 
+        convert_complexity(complexity)
+}
+
+fn convert_complexity(complexity: String) -> u8
+{
         let random = read_first_char("R".to_string());
         let simple = read_first_char("S".to_string());
         let complex = read_first_char("C".to_string());
