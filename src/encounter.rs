@@ -2,6 +2,8 @@ use rand::Rng;
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
 
+use serde_json;
+
 use beastiary;
 use beastio::*;
 
@@ -16,6 +18,31 @@ const EASY: &str = "easy";
 const MEDIUM: &str = "medium";
 const HARD: &str = "hard";
 
+pub fn generate_encounter(the_beastiary: &Beastiary)
+{
+        let working_encounter = generate_potential_encounter(the_beastiary);
+
+        display_encounter(working_encounter);
+}
+
+pub fn display_encounter(encounter: PotentialEncounter)
+{
+        for i in 0..encounter.groups.len()
+        {
+                let number = encounter.groups[i].0;
+                let monster = encounter.groups[i].1;
+                if number != 1
+                {
+                        println!("{} {} {}s",
+                                 monster.organisation.descriptor,
+                                 number,
+                                 monster.name
+                        );
+                } else {
+                        println!("One {}", monster.name)
+                }
+        }
+}
 
 struct Encounter
 {
@@ -32,10 +59,8 @@ struct MonsterByMonsterStuff
 
 }
 
-// TODO: Number of Easy Monsters = Players + 2, never less than 3
-// TODO:
-
-
+// todo: move serde derives to Encounter struct when complete
+#[derive(Serialize, Deserialize)]
 struct PotentialEncounter
 {
         // int is the number of that monster in the group
@@ -77,20 +102,24 @@ impl PotentialEncounter
                 self.current_monster_points = self.current_monster_points - self.groups[remove_index].0;
                 self.groups.remove(remove_index);
         }
+
+        fn merge_encounter(&mut self, encounter_to_add: &PotentialEncounter)
+        {
+                // add the points together
+                self.current_monster_points += encounter_to_add.current_monster_points;
+
+                // go through vector and insert every item into other vector
+                for i in 0..(encounter_to_add.groups.len())
+                {
+                        self.groups.push
+                        (
+                                (encounter_to_add.groups[i].0, encounter_to_add.groups[i].1)
+                        );
+                }
+        }
 }
 
-fn get_number_of_players() -> u8
-{
-        read_int("How many players will be facing this encounter") as u8
-}
 
-pub fn generate_encounter(the_beastiary: &Beastiary)
-{
-        let working_encounter = generate_potential_encounter(the_beastiary);
-
-
-
-}
 
 fn generate_potential_encounter(the_beastiary: &Beastiary) -> PotentialEncounter
 {
@@ -191,18 +220,16 @@ fn generate_mixed_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u
 
         potential_encounter_builder(&medium_monsters, points_to_replace);
 
-        join_potential_encounters(easy_monsters, medium_monsters)
-}
+        easy_monsters.merge_encounter(&medium_monsters);
 
-fn join_potential_encounters(first_encounter: PotentialEncounter,
-                             second_encounter: PotentialEncounter) -> PotentialEncounter
-{
-        // TODO: the issues with this already, damn
+        easy_monsters
 }
 
 fn generate_hard_solo(the_beastiary: &Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
+        let mut hard_solos = list_suitably_challenging_monsters(the_beastiary, HARD, complexity);
 
+        potential_encounter_builder(hard_solos, 1)
 }
 
 fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
@@ -330,4 +357,10 @@ fn convert_complexity(complexity: String) -> u8
                 difficult => 3,
                 _ => 0
         }
+}
+
+
+fn get_number_of_players() -> u8
+{
+        read_int("How many players will be facing this encounter") as u8
 }
