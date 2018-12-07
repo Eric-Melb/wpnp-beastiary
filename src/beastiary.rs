@@ -26,8 +26,7 @@ impl Beastiary
                 let mut prior_beasts = String::new();
                 beastfile.read_to_string(&mut prior_beasts).unwrap();
 
-                let mut beastmap: HashMap<String, Monster> = HashMap::new();
-                beastmap = serde_json::from_str(&prior_beasts).unwrap();
+                let beastmap: HashMap<String, Monster> = serde_json::from_str(&prior_beasts).unwrap();
 
                 Beastiary{beasts: beastmap}
         }

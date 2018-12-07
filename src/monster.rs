@@ -64,7 +64,7 @@ impl Monster
         pub fn attack(&self, weapon_number: u8) -> u8
         {
                 //TODO: roll damage from passed weapon
-                let damage = 1;
+                let damage = weapon_number;
 
                 damage
         }
@@ -84,7 +84,7 @@ impl Monster
         pub fn damage(&mut self, damage: u8) -> u8
         {
                 //TODO: lower hp by amount and return new hp
-                self.derived_statistics["hp"] -= damage;
+                *self.derived_statistics.get_mut("hp").unwrap() -= damage;
 
                 let current_hp = self.derived_statistics["hp"];
 

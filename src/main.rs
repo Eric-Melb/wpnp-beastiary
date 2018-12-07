@@ -63,7 +63,7 @@ fn main()
 
                 match choice
                 {
-                        1 => (generate_encounter(&the_beastiary)),
+                        1 => (generate_encounter(&mut the_beastiary)),
                         2 => (),
                         3 => (),
                         4 => (),
