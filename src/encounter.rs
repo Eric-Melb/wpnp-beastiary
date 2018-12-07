@@ -2,12 +2,9 @@ use rand::Rng;
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
 
-use serde_json;
-
-use beastiary;
 use beastio::*;
-
-use monster;
+use monster::*;
+use beastiary::*;
 
 const LOW_DIFFICULTY_ENCOUNTER_SIZE: u8 = 2;
 const MID_DIFFICULTY_ENCOUNTER_SIZE: u8 = 7;
@@ -91,7 +88,7 @@ impl PotentialEncounter
         {
                 let mut remove_index = -1;
 
-                for i in 0..(len(self.groups) - 1)
+                for i in 0..(self.groups.len() - 1)
                 {
                         if self.groups[i].1.name == monster_name.to_string()
                         {
@@ -152,9 +149,9 @@ fn list_suitably_challenging_monsters(the_beastiary: &Beastiary, difficulty: &st
         // find monsters that meet our complexity requirements
         let mut suitably_challenging_monsters: Vec<Monster> = Vec::new();
 
-        for creature in suitable_difficulty_mosnters
+        for creature in suitable_difficulty_monsters
         {
-                if compare_complexity(creature.threat["complexity"], complexity)
+                if compare_complexity(&creature.threat["complexity"], complexity)
                 {
                         suitable_difficulty_monsters.push(creature);
                 }
@@ -336,7 +333,7 @@ fn get_hidden_difficulty() -> u8
 fn get_complexity() -> u8
 {
         let complexity = read_string("Complexity of enemies will be (R)andom [default], (S)imple, (C)omplex, or (D)ifficult")
-        .to_upper_case()
+        .to_uppercase()
         ;
 
         convert_complexity(complexity)

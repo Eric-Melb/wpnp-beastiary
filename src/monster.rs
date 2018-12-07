@@ -26,7 +26,7 @@ pub struct Monster
         pub loot: Vec<String>
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct MonsterOrg
 {
         pub descriptor: String,
@@ -42,7 +42,7 @@ impl MonsterOrg
         }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Weapon
 {
         name: String,
@@ -71,12 +71,24 @@ impl Monster
 
         pub fn abilities(&self) -> String
         {
+                let mut abilities: String = String::new();
                 //TODO: report ability names
+                for i in 0..self.abilities.len()
+                {
+                        abilities += &self.abilities[i];
+                }
+
+                abilities
         }
 
-        pub fn damage(&self) -> u8
+        pub fn damage(&mut self, damage: u8) -> u8
         {
                 //TODO: lower hp by amount and return new hp
+                self.derived_statistics["hp"] -= damage;
+
+                let current_hp = self.derived_statistics["hp"];
+
+                current_hp
         }
 
 }
