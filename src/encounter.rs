@@ -1,3 +1,4 @@
+use rand;
 use rand::Rng;
 use rand::prelude::*;
 use rand::distributions::WeightedIndex;
@@ -57,14 +58,15 @@ struct MonsterByMonsterStuff
 }
 
 // todo: move serde derives to Encounter struct when complete
+// todo: this shouldn't all be public once fully encounter functionality is in
 #[derive(Serialize, Deserialize)]
-struct PotentialEncounter
+pub struct PotentialEncounter
 {
         // int is the number of that monster in the group
-        groups: Vec<(u8, Monster)>,
+        pub groups: Vec<(u8, Monster)>,
         // "number of easy monsters" of value
-        current_monster_points: u8,
-        monster_points_cap: u8
+        pub current_monster_points: u8,
+        pub monster_points_cap: u8
 
         //from here options are
         // reroll encounter
@@ -86,7 +88,7 @@ impl PotentialEncounter
         // small vec though
         fn remove(&mut self, monster_name: &str)
         {
-                let mut remove_index = -1;
+                let mut remove_index = 0;
 
                 for i in 0..(self.groups.len() - 1)
                 {
@@ -173,6 +175,7 @@ fn generate_easy_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u8
 
 fn generate_mixed_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
+        let mut rng = rand::thread_rng();
         let mut easy_monsters = generate_easy_monsters(the_beastiary,
                                                         number_of_easy_monsters,
                                                         complexity);
@@ -203,19 +206,22 @@ fn generate_mixed_monsters(the_beastiary: &Beastiary, number_of_easy_monsters: u
                 easy_monsters = generate_easy_monsters(the_beastiary, number_of_easy_monsters, complexity);
         }
 
-        Rng::gen_range(points_to_replace, 0, number_of_threes);
+        points_to_replace = rng.gen_range(0, number_of_threes);
+
 
         // remove between 1 and number_of_threes groups (that can be validly removed)
-        for i in 0..points_to_replace
+        for i in 0..points_to_replace as usize
         {
                 // monsters are already in a random order in the potential encounter so we can just iterate here
-                easy_monsters.remove(names_to_remove[i]);
+                easy_monsters.remove(&names_to_remove[i]);
         }
 
         // add in the replacement medium monsters
-        let mut medium_monsters = list_suitably_challenging_monsters(the_beastiary, MEDIUM, complexity);
-
-        potential_encounter_builder(&medium_monsters, points_to_replace);
+        let mut medium_monsters =
+                potential_encounter_builder(
+                        &list_suitably_challenging_monsters(the_beastiary,
+                                                            MEDIUM, complexity),
+                        points_to_replace);
 
         easy_monsters.merge_encounter(&medium_monsters);
 
@@ -226,20 +232,22 @@ fn generate_hard_solo(the_beastiary: &Beastiary, number_of_easy_monsters: u8, co
 {
         let mut hard_solos = list_suitably_challenging_monsters(the_beastiary, HARD, complexity);
 
-        potential_encounter_builder(hard_solos, 1)
+        potential_encounter_builder(&hard_solos, 1)
 }
 
 fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
 {
+        let mut rng = rand::thread_rng();
+
         let mut groups: Vec<(u8, Monster)> = Vec::new();
         let mut current_monster_points = 0;
         let monster_points_cap = budget;
         let number_unique_monsters = monsters.len();
 
+
         while monster_points_cap - current_monster_points > 2
         {
-                let current_pick = 0;
-                Rng::gen_range(current_pick, 0, number_unique_monsters);
+                let current_pick = rng.gen_range(0, number_unique_monsters);
 
                 let org: MonsterOrg = monsters[current_pick].organisation;
 
@@ -250,8 +258,7 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                 }
                 else if org.max < (monster_points_cap - current_monster_points)
                 {
-                        let number = 1;
-                        Rng::gen_range(number, org.min, org.max);
+                        let number = rng.gen_range(org.min, org.max);
                         groups.push((number, monsters[current_pick]));
                         current_monster_points = current_monster_points - number;
                 }
@@ -301,7 +308,7 @@ fn find_number_of_easy_monsters() -> u8
 fn get_party_power() -> u8
 {
         let power = read_string("Is the party facing the encounter (L)ow [default], (M)id, (H)igh Power, or (N)on Combat Oriented")
-                .to_upper_case()
+        .to_uppercase()
         ;
 
         let low = read_first_char("L".to_string());
