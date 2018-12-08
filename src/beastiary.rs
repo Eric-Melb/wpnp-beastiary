@@ -35,7 +35,7 @@ impl Beastiary
         {
                 let beasts = Beastiary::load_beasts(beastiary_file);
                 // "backup" beastiary, replacing any previous backup
-                fs::rename(beastiary_file, old_beastiary_file).unwrap();
+                fs::copy(beastiary_file, old_beastiary_file).unwrap();
 
                 beasts
         }

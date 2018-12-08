@@ -12,6 +12,12 @@ const MID_DIFFICULTY_ENCOUNTER_SIZE: u8 = 7;
 const HIGH_DIFFICULTY_ENCOUNTER_SIZE: u8 = 15;
 const NON_DIFFICULTY_ENCOUNTER_SIZE: u8 = 0;
 
+const EASY_RATING_WEIGHT: u8 = 2;
+const MEDIUM_RATING_WEIGHT: u8 = 5;
+const HARDSOLO_RATING_WEIGHT: u8 = 1;
+
+const VALUE_OF_MEDIUM_MONSTER: u8 = 3;
+
 const EASY: &str = "easy";
 const MEDIUM: &str = "medium";
 const HARD: &str = "hard";
@@ -20,6 +26,9 @@ pub fn generate_encounter(the_beastiary: &mut Beastiary)
 {
         let working_encounter = generate_potential_encounter(the_beastiary);
 
+
+        // TODO: debug / delete
+        println!("Displaying ecounter:");
         display_encounter(working_encounter);
 }
 
@@ -164,6 +173,7 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
 
 fn generate_easy_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
+        println!("EASY");
         // generate a potential pool of easy monsters
         let suitably_challenging_monsters: Vec<Monster> =
                 list_suitably_challenging_monsters(the_beastiary,
@@ -175,14 +185,16 @@ fn generate_easy_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters
 
 fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
 {
+        println!("MIXED");
         let mut rng = rand::thread_rng();
-        let mut easy_monsters = generate_easy_monsters(the_beastiary,
-                                                        number_of_easy_monsters,
-                                                        complexity);
+
         let mut number_of_threes: u8 = 0;
         let mut names_to_remove: Vec<String> = Vec::new();
 
 
+        let mut easy_monsters = generate_easy_monsters(the_beastiary,
+                                                       number_of_easy_monsters,
+                                                       complexity);
         // keep generating encounters filled with easy monsters until we have one that can validly be replaced with at least one medium monster
         loop
         {
@@ -193,11 +205,15 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
                         {
                                 number_of_threes = number_of_threes + 1;
                                 names_to_remove.push(monster_type.name.clone());
+                                println!("Could remove {}", monster_type.name)
                         }
                 }
 
+                println!("Number of threes was {}", number_of_threes);
+
                 if number_of_threes != 0
                 {
+
                         break;
                 }
 
@@ -205,17 +221,41 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
                 easy_monsters = generate_easy_monsters(the_beastiary, number_of_easy_monsters, complexity);
         }
 
+        let mut points_to_replace = 1;
 
-        let points_to_replace = rng.gen_range(0, number_of_threes);
+        if number_of_threes != 1
+        {
+                points_to_replace = rng.gen_range(1, number_of_threes);
+        }
 
         // remove between 1 and number_of_threes groups (that can be validly removed)
         for i in 0..points_to_replace as usize
         {
+                let mut delete = true;
+                let target = &names_to_remove[i];
+                for j in 0..easy_monsters.groups.len() - 1
+                {
+                        if &easy_monsters.groups[j].1.name == target
+                        {
+                                if easy_monsters.groups[j].0 > VALUE_OF_MEDIUM_MONSTER
+                                {
+                                        delete = false;
+                                        easy_monsters.groups[j].0 -= VALUE_OF_MEDIUM_MONSTER;
+                                }
+                        }
+                }
+
+                if delete
+                {
+                        easy_monsters.remove(&names_to_remove[i]);
+                }
+
                 // monsters are already in a random order in the potential encounter so we can just iterate here
-                easy_monsters.remove(&names_to_remove[i]);
+
         }
 
         // add in the replacement medium monsters
+        println!("Adding medium monsters");
         let medium_monsters =
                 potential_encounter_builder(
                         &list_suitably_challenging_monsters(the_beastiary,
@@ -229,6 +269,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
 
 fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> PotentialEncounter
 {
+        println!("HARD");
         let hard_solos = list_suitably_challenging_monsters(the_beastiary, HARD, complexity);
 
         potential_encounter_builder(&hard_solos, 1)
@@ -243,26 +284,60 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
         let monster_points_cap = budget;
         let number_unique_monsters = monsters.len();
 
+        let mut remaining_points = monster_points_cap - current_monster_points;
 
-        while monster_points_cap - current_monster_points > 2
+        while remaining_points > 0
         {
+                println!("Current points: {}, Cap: {}", &current_monster_points, &monster_points_cap);
                 //let current_pick = rng.gen_range(0, number_unique_monsters);
-                let current_pick = 1; //TODO: the rng above is fucked?
+                let current_pick = rng.gen_range(0, monsters.len() - 1);
 
                 let org: &MonsterOrg = &monsters[current_pick].organisation;
 
-                if org.max == (monster_points_cap - current_monster_points)
+                println!("Pick is: {}, {} {} to {}",
+                         &monsters[current_pick].name,
+                         org.descriptor,
+                         org.min,
+                         org.max
+                );
+
+                if org.max == 0
+                {
+                        continue
+                } else if org.max == org.min && org.max <= remaining_points
+                {
+                        groups.push((org.min, monsters[current_pick].clone()));
+                        current_monster_points = current_monster_points + org.min;
+                } else if org.max == remaining_points
                 {
                         groups.push((org.max, monsters[current_pick].clone()));
-                        current_monster_points = current_monster_points - org.max;
-                }
-                else if org.max < (monster_points_cap - current_monster_points)
+                        current_monster_points = current_monster_points + org.max;
+                } else if org.min == remaining_points
                 {
-                        let number = rng.gen_range(org.min, org.max);
+                        groups.push((org.min, monsters[current_pick].clone()));
+                        current_monster_points = current_monster_points + org.min;
+                } else if org.min < remaining_points
+                {
+                        let mut number = rng.gen_range(org.min, org.max);
+
+                        println! {"will add {}", number};
+
+                        if number > remaining_points
+                        {
+                                number = rng.gen_range(org.min, remaining_points);
+                                println! {"will add {}", number};
+                        }
+
+                        println! {"adding {}", number};
+
+                        current_monster_points = current_monster_points + number;
                         groups.push((number, monsters[current_pick].clone()));
-                        current_monster_points = current_monster_points - number; // TODO: this line's fucked
                 }
+
+                remaining_points = monster_points_cap - current_monster_points;
         }
+
+        // TODO: merge groups of the same name together (e.g. 1 bandit leader, 3 bandits, 1 bandit leader, should be 2 bandit leaders, 3 bandits)
 
         PotentialEncounter{groups, current_monster_points, monster_points_cap}
 }
@@ -297,10 +372,14 @@ fn find_number_of_easy_monsters() -> u8
 
         let number_of_easy_monsters = number_of_players + party_power;
 
+        println!("Number of easy monsters is {}", number_of_easy_monsters);
+
         //multiply by anywhere between .75 and 1.25
         let float_monsters = number_of_easy_monsters as f32 * rng.gen_range(0.75, 1.25);
 
         let number_of_easy_monsters = float_monsters as u8;
+
+        println!("Number of easy monsters is {}", number_of_easy_monsters);
 
         number_of_easy_monsters
 }
@@ -312,6 +391,8 @@ fn get_party_power() -> u8
                 (L)ow [default], (M)id, (H)igh Power, or (N)on Combat Oriented")
                 .to_uppercase()
         );
+
+        // TODO: not working, replace all of this with if statements thanks
 
         let _low = read_first_char("L".to_string());
         let _mid = read_first_char("M".to_string());
@@ -332,7 +413,7 @@ fn get_hidden_difficulty() -> u8
 {
         let mut rng = rand::thread_rng();
         let difficulty_options: [u8; 3] = [1, 2, 3];
-        let weights: [u8; 3] = [2, 3, 1];
+        let weights: [u8; 3] = [EASY_RATING_WEIGHT, MEDIUM_RATING_WEIGHT, HARDSOLO_RATING_WEIGHT];
         let dist = WeightedIndex::new(&weights).unwrap();
         let hidden_difficulty = difficulty_options[dist.sample(&mut rng)];
 
@@ -370,5 +451,12 @@ fn convert_complexity(complexity: String) -> u8
 
 fn get_number_of_players() -> u8
 {
-        read_int("How many players will be facing this encounter") as u8
+        let mut number = read_int("How many players will be facing this encounter") as u8;
+
+        if number == 0
+        {
+                number = 1;
+        }
+
+        return number
 }
