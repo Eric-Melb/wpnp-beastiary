@@ -119,12 +119,30 @@ impl PotentialEncounter
                 self.current_monster_points += encounter_to_add.current_monster_points;
 
                 // go through vector and insert every item into other vector
+                // if the monster is already in the self vector, just add the u8s
                 for i in 0..encounter_to_add.groups.len()
                 {
-                        self.groups.push
-                        (
-                                (encounter_to_add.groups[i].0, encounter_to_add.groups[i].1.clone())
-                        );
+                        let mut merge_index = -1;
+                        let mut merge_existing = false;
+                        for j in 0..self.groups.len()
+                        {
+                                if encounter_to_add.groups[i].1.name == self.groups[j].1.name
+                                {
+                                        merge_index = j as i32;
+                                }
+                        }
+                        if merge_index >= 0
+                        {
+                                self.groups[merge_index as usize].0 += encounter_to_add.groups[i].0;
+                        }
+                        else
+                        {
+                                self.groups.push
+                                (
+                                        (encounter_to_add.groups[i].0, encounter_to_add.groups[i].1.clone())
+                                );
+                        }
+
                 }
         }
 }
@@ -158,7 +176,6 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
         {
                 if creature.threat["difficulty"] == difficulty
                 {
-                        println!("Adding {}", creature.name);
                         suitable_difficulty_monsters.push(creature.clone());
                 }
         }
@@ -169,7 +186,6 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
         {
                 if compare_complexity(&creature.threat["complexity"], complexity)
                 {
-                        println!("Keeping {}", creature.name);
                         suitably_challenging_monsters.push(creature);
                 }
         }
@@ -209,7 +225,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
                 {
                         if *amount > 3
                         {
-                                number_of_threes = number_of_threes + 1;
+                                number_of_threes += 1;
                                 names_to_remove.push(monster_type.name.clone());
                                 println!("Could remove {}", monster_type.name)
                         }
@@ -294,41 +310,36 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
         let mut current_monster_points = 0;
         let monster_points_cap = budget;
         let number_unique_monsters = monsters.len();
-        let mut current_pick = rng.gen_range(0, monsters.len() - 1);
+        let mut current_pick: usize = 0;
 
         let mut remaining_points = monster_points_cap - current_monster_points;
 
         while remaining_points > 0
         {
                 let mut new_add = true;
-                //println!("Current points: {}, Cap: {}, Remaining: {}",
-                //         &current_monster_points, &monster_points_cap, remaining_points);
+
+                println!("CURRENT ENCOUNTER:");
+                println!("Current points: {}, Cap: {}, Remaining: {}",
+                         &current_monster_points, &monster_points_cap, remaining_points);
+
                 let mut current_pick: usize = 0;
                 if monsters.len() == 1
                 {
-                        //only 1 suitable monster, pick it
+                        // only 1 suitable monster, pick it
                         let current_pick = 0;
-                        panic!("ONLY ONE?");
                 }
-                // TODO: uncomment gen_range gets a little weird if the range is 0 to 1
-                //else if monsters.len() == 2
-                //{
-                //        current_pick = rng.gen_range(0, 4) % 2;
-                //        println!("Generated {} in range 0 to {}", current_pick, monsters.len() - 1);
-                //} else {
+                // gen_range gets a little weird if the range is 0 to 1
+                else if monsters.len() == 2
+                {
+                        current_pick = rng.gen_range(0, 4) % 2;
+                }
+                else
+                {
                         current_pick = rng.gen_range(0, monsters.len() - 1);
-                        println!("Generated {} in range 0 to {}", current_pick, monsters.len() - 1);
                 }
 
 
                 let org: &MonsterOrg = &monsters[current_pick].organisation;
-
-                //println!("Pick is: {}, {} {} to {}",
-                //         &monsters[current_pick].name,
-                //         org.descriptor,
-                //         org.min,
-                //         org.max
-                //);
 
                 // if monsters have already been added
                 // check if this monster has already been added, and if so
@@ -337,19 +348,19 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                 let mut index: usize = 0;
                 if groups.len() != 0
                 {
-                        //println!("Checking to see if {} has been added", &monsters[current_pick].name);
+
                         for i in 0..groups.len()
                         {
                                 let existing_monster = &groups[i].1;
-                                //println!("Checking against {}", &existing_monster.name);
+
                                 let existing_number = groups[i].0;
-                                //println!("There are currently {} {}s", existing_number, &existing_monster.name);
+
                                 if &monsters[current_pick].name == &existing_monster.name
                                 {
 
-                                        //println!("Registering that {} has already been added", existing_monster.name);
+
                                         new_add = false;
-                                        //println!("Checking {} is less than {}", existing_number, existing_monster.organisation.max);
+
                                         if existing_number < existing_monster.organisation.max
                                         {
                                                 let valid_group_addition_max =
@@ -358,7 +369,6 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                                                 number = lower_of(valid_group_addition_max,
                                                                   remaining_points);
 
-                                                //println!("Adding {} {}s", number, existing_monster.name);
                                         }
                                         break;
                                 }
@@ -368,46 +378,56 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
 
                 if !new_add
                 {
-                        //println!("Should add {}", number);
+                        println!("Should add {}", number);
                         groups[index].0 += number;
-                        //println!("Already added, passing");
-                        continue
-                } else if org.max == 0
+                        current_monster_points += number;
+                        println!("adding {} {}s after updating current points to {}",
+                                 number, monsters[current_pick].name, current_monster_points);
+                }
+                else if org.max == 0
                 {
                         continue
-                } else if org.max == org.min && org.max <= remaining_points
+                }
+                else if org.max == org.min && org.max <= remaining_points
                 {
-                        groups.push((org.min, monsters[current_pick].clone()));
+
                         current_monster_points = current_monster_points + org.min;
-                } else if org.max == remaining_points
+                        println!("pushing {} {} after updating current points to {}",
+                                  org.min, monsters[current_pick].name, current_monster_points);
+                        groups.push((org.min, monsters[current_pick].clone()));
+                }
+                else if org.max == remaining_points
                 {
-                        groups.push((org.max, monsters[current_pick].clone()));
                         current_monster_points = current_monster_points + org.max;
-                } else if org.min == remaining_points
+                        println!("pushing {} {} after updating current points to {}",
+                                  org.max, monsters[current_pick].name, current_monster_points);
+                        groups.push((org.max, monsters[current_pick].clone()));
+                }
+                else if org.min == remaining_points
                 {
-                        groups.push((org.min, monsters[current_pick].clone()));
                         current_monster_points = current_monster_points + org.min;
-                } else if org.min < remaining_points
+                        println!("pushing {} {} after updating current points to {}",
+                                  org.min, monsters[current_pick].name, current_monster_points);
+                        groups.push((org.min, monsters[current_pick].clone()));
+
+                }
+                else if org.min < remaining_points
                 {
                         let mut number = rng.gen_range(org.min, org.max);
-
-                        println! {"will add {}", number};
 
                         if number > remaining_points
                         {
                                 number = rng.gen_range(org.min, remaining_points);
-                                println! {"will add {}", number};
                         }
 
-                        println! {"adding {}", number};
-
                         current_monster_points = current_monster_points + number;
-                        println! {"pushing {} {} after updating current points to {}",
-                                  number, monsters[current_pick].name, current_monster_points}
+                        println!("pushing {} {} after updating current points to {}",
+                                  number, monsters[current_pick].name, current_monster_points);
                         groups.push((number, monsters[current_pick].clone()));
                 }
 
                 remaining_points = monster_points_cap - current_monster_points;
+                println!()
         }
 
         PotentialEncounter{groups, current_monster_points, monster_points_cap}
@@ -421,12 +441,8 @@ fn compare_complexity(creature_complexity: &str, desired_complexity: u8) -> bool
                 return true;
         }
 
-        println!("Comparing {} with {}", creature_complexity, desired_complexity);
-
         // simple, complex, and difficult complexity
         let complexity = convert_complexity(creature_complexity.to_string());
-
-        println!("Converted {} into {}, comparing with {}", creature_complexity, complexity, desired_complexity);
 
         if complexity == desired_complexity
         {
@@ -442,7 +458,7 @@ fn find_number_of_easy_monsters() -> u8
 {
         let mut rng = rand::thread_rng();
         let number_of_players = get_number_of_players();
-        // nc - 0, low -
+
         let party_power = get_party_power();
 
         let number_of_easy_monsters = number_of_players + party_power;
