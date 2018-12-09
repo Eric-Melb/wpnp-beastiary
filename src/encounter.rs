@@ -6,6 +6,8 @@ use rand::distributions::WeightedIndex;
 use beastio::*;
 use monster::*;
 use beastiary::*;
+use helpers::higher_of;
+use helpers::lower_of;
 
 const LOW_DIFFICULTY_ENCOUNTER_SIZE: u8 = 2;
 const MID_DIFFICULTY_ENCOUNTER_SIZE: u8 = 7;
@@ -99,7 +101,7 @@ impl PotentialEncounter
         {
                 let mut remove_index = 0;
 
-                for i in 0..(self.groups.len() - 1)
+                for i in 0..self.groups.len()
                 {
                         if self.groups[i].1.name == monster_name.to_string()
                         {
@@ -117,7 +119,7 @@ impl PotentialEncounter
                 self.current_monster_points += encounter_to_add.current_monster_points;
 
                 // go through vector and insert every item into other vector
-                for i in 0..(encounter_to_add.groups.len())
+                for i in 0..encounter_to_add.groups.len()
                 {
                         self.groups.push
                         (
@@ -136,6 +138,8 @@ fn generate_potential_encounter(the_beastiary: &mut Beastiary) -> PotentialEncou
 
         let hidden_difficulty = get_hidden_difficulty();
 
+        // hidden difficult determines prevalence of medium and solo monsters
+        // based on constants at the top of this file
         match hidden_difficulty
         {
                 1 => (generate_easy_monsters(the_beastiary, number_of_easy_monsters, complexity)),
@@ -154,6 +158,7 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
         {
                 if creature.threat["difficulty"] == difficulty
                 {
+                        println!("Adding {}", creature.name);
                         suitable_difficulty_monsters.push(creature.clone());
                 }
         }
@@ -164,6 +169,7 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
         {
                 if compare_complexity(&creature.threat["complexity"], complexity)
                 {
+                        println!("Keeping {}", creature.name);
                         suitably_challenging_monsters.push(creature);
                 }
         }
@@ -233,7 +239,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
         {
                 let mut delete = true;
                 let target = &names_to_remove[i];
-                for j in 0..easy_monsters.groups.len() - 1
+                for j in 0..easy_monsters.groups.len()
                 {
                         if &easy_monsters.groups[j].1.name == target
                         {
@@ -275,33 +281,98 @@ fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> Potentia
         potential_encounter_builder(&hard_solos, 1)
 }
 
+// TODO: add error handling for being passed a vec with no monsters in it
 fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
 {
+        if monsters.len() == 0
+        {
+                println!("Got passed no monsters, going to panic now");
+        }
         let mut rng = rand::thread_rng();
 
         let mut groups: Vec<(u8, Monster)> = Vec::new();
         let mut current_monster_points = 0;
         let monster_points_cap = budget;
         let number_unique_monsters = monsters.len();
+        let mut current_pick = rng.gen_range(0, monsters.len() - 1);
 
         let mut remaining_points = monster_points_cap - current_monster_points;
 
         while remaining_points > 0
         {
-                println!("Current points: {}, Cap: {}", &current_monster_points, &monster_points_cap);
-                //let current_pick = rng.gen_range(0, number_unique_monsters);
-                let current_pick = rng.gen_range(0, monsters.len() - 1);
+                let mut new_add = true;
+                //println!("Current points: {}, Cap: {}, Remaining: {}",
+                //         &current_monster_points, &monster_points_cap, remaining_points);
+                let mut current_pick: usize = 0;
+                if monsters.len() == 1
+                {
+                        //only 1 suitable monster, pick it
+                        let current_pick = 0;
+                        panic!("ONLY ONE?");
+                }
+                // TODO: uncomment gen_range gets a little weird if the range is 0 to 1
+                //else if monsters.len() == 2
+                //{
+                //        current_pick = rng.gen_range(0, 4) % 2;
+                //        println!("Generated {} in range 0 to {}", current_pick, monsters.len() - 1);
+                //} else {
+                        current_pick = rng.gen_range(0, monsters.len() - 1);
+                        println!("Generated {} in range 0 to {}", current_pick, monsters.len() - 1);
+                }
+
 
                 let org: &MonsterOrg = &monsters[current_pick].organisation;
 
-                println!("Pick is: {}, {} {} to {}",
-                         &monsters[current_pick].name,
-                         org.descriptor,
-                         org.min,
-                         org.max
-                );
+                //println!("Pick is: {}, {} {} to {}",
+                //         &monsters[current_pick].name,
+                //         org.descriptor,
+                //         org.min,
+                //         org.max
+                //);
 
-                if org.max == 0
+                // if monsters have already been added
+                // check if this monster has already been added, and if so
+                // add up to the org.max or remaining points, whichever is lower
+                let mut number: u8 = 0;
+                let mut index: usize = 0;
+                if groups.len() != 0
+                {
+                        //println!("Checking to see if {} has been added", &monsters[current_pick].name);
+                        for i in 0..groups.len()
+                        {
+                                let existing_monster = &groups[i].1;
+                                //println!("Checking against {}", &existing_monster.name);
+                                let existing_number = groups[i].0;
+                                //println!("There are currently {} {}s", existing_number, &existing_monster.name);
+                                if &monsters[current_pick].name == &existing_monster.name
+                                {
+
+                                        //println!("Registering that {} has already been added", existing_monster.name);
+                                        new_add = false;
+                                        //println!("Checking {} is less than {}", existing_number, existing_monster.organisation.max);
+                                        if existing_number < existing_monster.organisation.max
+                                        {
+                                                let valid_group_addition_max =
+                                                        existing_monster.organisation.max - existing_number;
+
+                                                number = lower_of(valid_group_addition_max,
+                                                                  remaining_points);
+
+                                                //println!("Adding {} {}s", number, existing_monster.name);
+                                        }
+                                        break;
+                                }
+                        }
+                }
+
+
+                if !new_add
+                {
+                        //println!("Should add {}", number);
+                        groups[index].0 += number;
+                        //println!("Already added, passing");
+                        continue
+                } else if org.max == 0
                 {
                         continue
                 } else if org.max == org.min && org.max <= remaining_points
@@ -331,13 +402,13 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                         println! {"adding {}", number};
 
                         current_monster_points = current_monster_points + number;
+                        println! {"pushing {} {} after updating current points to {}",
+                                  number, monsters[current_pick].name, current_monster_points}
                         groups.push((number, monsters[current_pick].clone()));
                 }
 
                 remaining_points = monster_points_cap - current_monster_points;
         }
-
-        // TODO: merge groups of the same name together (e.g. 1 bandit leader, 3 bandits, 1 bandit leader, should be 2 bandit leaders, 3 bandits)
 
         PotentialEncounter{groups, current_monster_points, monster_points_cap}
 }
@@ -350,8 +421,12 @@ fn compare_complexity(creature_complexity: &str, desired_complexity: u8) -> bool
                 return true;
         }
 
+        println!("Comparing {} with {}", creature_complexity, desired_complexity);
+
         // simple, complex, and difficult complexity
         let complexity = convert_complexity(creature_complexity.to_string());
+
+        println!("Converted {} into {}, comparing with {}", creature_complexity, complexity, desired_complexity);
 
         if complexity == desired_complexity
         {
@@ -392,21 +467,27 @@ fn get_party_power() -> u8
                 .to_uppercase()
         );
 
-        // TODO: not working, replace all of this with if statements thanks
+        let low = read_first_char("L".to_string());
+        let mid = read_first_char("M".to_string());
+        let high = read_first_char("H".to_string());
+        let non_combat = read_first_char("N".to_string());
 
-        let _low = read_first_char("L".to_string());
-        let _mid = read_first_char("M".to_string());
-        let _high = read_first_char("H".to_string());
-        let _non_combat = read_first_char("N".to_string());
-
-        match power
+        if power == low
         {
-                _low if _low == power => LOW_DIFFICULTY_ENCOUNTER_SIZE,
-                _mid if _mid == power => MID_DIFFICULTY_ENCOUNTER_SIZE,
-                _high if _high == power => HIGH_DIFFICULTY_ENCOUNTER_SIZE,
-                _non_combat if _non_combat == power => NON_DIFFICULTY_ENCOUNTER_SIZE,
-                _ => LOW_DIFFICULTY_ENCOUNTER_SIZE
+                return LOW_DIFFICULTY_ENCOUNTER_SIZE
+        } else if power == mid
+        {
+                return MID_DIFFICULTY_ENCOUNTER_SIZE
+        } else if power == high
+        {
+                return HIGH_DIFFICULTY_ENCOUNTER_SIZE
+        } else if power == non_combat
+        {
+                return NON_DIFFICULTY_ENCOUNTER_SIZE
+        } else {
+                return LOW_DIFFICULTY_ENCOUNTER_SIZE
         }
+
 }
 
 fn get_hidden_difficulty() -> u8
@@ -431,20 +512,28 @@ fn get_complexity() -> u8
 
 fn convert_complexity(complexity: String) -> u8
 {
-        let _random = read_first_char("R".to_string());
-        let _simple = read_first_char("S".to_string());
-        let _complex = read_first_char("C".to_string());
-        let _difficult = read_first_char("D".to_string());
+        let random = read_first_char("R".to_string());
+        let simple = read_first_char("S".to_string());
+        let complex = read_first_char("C".to_string());
+        let difficult = read_first_char("D".to_string());
 
-        let comp = read_first_char(complexity);
+        let comp = read_first_char(complexity.to_uppercase());
 
-        match comp
+        if comp == random
         {
-                _random if _random == comp => 0,
-                _simple if _simple == comp => 1,
-                _complex if _complex == comp => 2,
-                _difficult if _difficult == comp => 3,
-                _ => 0
+                return 0
+        } else if comp == simple
+        {
+                return 1
+        } else if comp == complex
+        {
+                return 2
+        } else if comp == difficult
+        {
+                return 3
+        } else
+        {
+                return 0
         }
 }
 
