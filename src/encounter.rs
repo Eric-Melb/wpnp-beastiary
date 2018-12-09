@@ -247,7 +247,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
 
         if number_of_threes != 1
         {
-                points_to_replace = rng.gen_range(1, number_of_threes);
+                points_to_replace = rng.gen_range(1, number_of_threes + 1);
         }
 
         // remove between 1 and number_of_threes groups (that can be validly removed)
@@ -314,6 +314,7 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
 
         let mut remaining_points = monster_points_cap - current_monster_points;
 
+        // TODO: guard against infinite loops here
         while remaining_points > 0
         {
                 let mut new_add = true;
@@ -328,14 +329,9 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                         // only 1 suitable monster, pick it
                         let current_pick = 0;
                 }
-                // gen_range gets a little weird if the range is 0 to 1
-                else if monsters.len() == 2
-                {
-                        current_pick = rng.gen_range(0, 4) % 2;
-                }
                 else
                 {
-                        current_pick = rng.gen_range(0, monsters.len() - 1);
+                        current_pick = rng.gen_range(0, monsters.len());
                 }
 
 
@@ -413,11 +409,11 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                 }
                 else if org.min < remaining_points
                 {
-                        let mut number = rng.gen_range(org.min, org.max);
+                        let mut number = rng.gen_range(org.min, org.max + 1);
 
                         if number > remaining_points
                         {
-                                number = rng.gen_range(org.min, remaining_points);
+                                number = rng.gen_range(org.min, remaining_points + 1);
                         }
 
                         current_monster_points = current_monster_points + number;
@@ -464,7 +460,7 @@ fn find_number_of_easy_monsters() -> u8
         let number_of_easy_monsters = number_of_players + party_power;
 
         //multiply by anywhere between .75 and 1.25
-        let float_monsters = number_of_easy_monsters as f32 * rng.gen_range(0.75, 1.25);
+        let float_monsters = number_of_easy_monsters as f32 * rng.gen_range(0.75, 1.26);
 
         let number_of_easy_monsters = float_monsters as u8;
 
