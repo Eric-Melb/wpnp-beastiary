@@ -16,7 +16,7 @@ const NON_DIFFICULTY_ENCOUNTER_SIZE: u8 = 0;
 
 const EASY_RATING_WEIGHT: u8 = 2;
 const MEDIUM_RATING_WEIGHT: u8 = 5;
-const HARDSOLO_RATING_WEIGHT: u8 = 1;
+const HARDSOLO_RATING_WEIGHT: u8 = 0;
 
 const VALUE_OF_MEDIUM_MONSTER: u8 = 3;
 
@@ -277,7 +277,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
         }
 
         // add in the replacement medium monsters
-        println!("Adding medium monsters");
+        println!("Adding {} medium monsters", points_to_replace);
         let medium_monsters =
                 potential_encounter_builder(
                         &list_suitably_challenging_monsters(the_beastiary,
@@ -463,14 +463,10 @@ fn find_number_of_easy_monsters() -> u8
 
         let number_of_easy_monsters = number_of_players + party_power;
 
-        println!("Number of easy monsters is {}", number_of_easy_monsters);
-
         //multiply by anywhere between .75 and 1.25
         let float_monsters = number_of_easy_monsters as f32 * rng.gen_range(0.75, 1.25);
 
         let number_of_easy_monsters = float_monsters as u8;
-
-        println!("Number of easy monsters is {}", number_of_easy_monsters);
 
         number_of_easy_monsters
 }
