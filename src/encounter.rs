@@ -217,13 +217,22 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
         let mut easy_monsters = generate_easy_monsters(the_beastiary,
                                                        number_of_easy_monsters,
                                                        complexity);
+
+        // certain low powered low numbered parties will never be able to fight medium
+        // monsters according to the encounter generation algorithm, prevent this infinite loop
+        let mut loop_guard: u32 = 0;
+
+        // TODO: update this loop and the loop below it to account for being able to remove multiple
+        // groups of three and still be above monster minimum.
         // keep generating encounters filled with easy monsters until we have one that can validly be replaced with at least one medium monster
         loop
         {
                 // find the number of groups that have at least 3 monsters (i.e. could be replaced by a medium)
                 for (amount, monster_type) in &easy_monsters.groups
                 {
-                        if *amount > 3
+                        println!("There are {} {}s", amount, monster_type.name);
+                        // TODO: &3 works here but *amount doesn't, look into this
+                        if amount > &3
                         {
                                 number_of_threes += 1;
                                 names_to_remove.push(monster_type.name.clone());
@@ -241,6 +250,11 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
 
                 // regenerate encounter if there's no 3s to replace [TODO: this will loop infinitely for 2 players in a non-combat party]
                 easy_monsters = generate_easy_monsters(the_beastiary, number_of_easy_monsters, complexity);
+
+                // don't regenerate forever (in the case of e.g. a party of 1 merchant and 1 craftsperson)
+                loop_guard += 1;
+                // just early return without replacement in this case
+                if loop_guard > 10 { return easy_monsters; }
         }
 
         let mut points_to_replace = 1;
@@ -300,6 +314,9 @@ fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> Potentia
 // TODO: add error handling for being passed a vec with no monsters in it
 fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
 {
+        // if the beastiary is small, or certain monsters are added in an order that
+        // does not allow group expansion or new monsters, we will infinite loop, need to break
+        let mut loop_guard: u64 = 0;
         if monsters.len() == 0
         {
                 println!("Got passed no monsters, going to panic now");
@@ -366,6 +383,7 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                                                                   remaining_points);
 
                                         }
+                                        index = i;
                                         break;
                                 }
                         }
@@ -423,7 +441,12 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                 }
 
                 remaining_points = monster_points_cap - current_monster_points;
-                println!()
+                println!(); //TODO: why is this println here?
+
+                loop_guard += 1;
+
+                // do not seek to fill out points if the beastiary constraints don't allow it
+                if loop_guard >= 1000 { break; }
         }
 
         PotentialEncounter{groups, current_monster_points, monster_points_cap}
