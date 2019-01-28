@@ -1,4 +1,4 @@
-// TODO: this file got messy, needs refactor
+// TODO: refactor for neatness and test coverage in progress
 
 use rand;
 use rand::Rng;
@@ -11,6 +11,7 @@ use beastiary::*;
 use helpers::higher_of;
 use helpers::lower_of;
 
+// CONSTANTS
 const LOW_DIFFICULTY_ENCOUNTER_SIZE: u8 = 2;
 const MID_DIFFICULTY_ENCOUNTER_SIZE: u8 = 7;
 const HIGH_DIFFICULTY_ENCOUNTER_SIZE: u8 = 15;
@@ -36,7 +37,7 @@ pub fn generate_encounter(the_beastiary: &mut Beastiary)
         display_encounter(working_encounter);
 }
 
-pub fn display_encounter(encounter: PotentialEncounter)
+pub fn display_encounter(encounter: Encounter)
 {
         for i in 0..encounter.groups.len()
         {
@@ -55,25 +56,9 @@ pub fn display_encounter(encounter: PotentialEncounter)
         }
 }
 
-struct Encounter
-{
-
-}
-
-struct EncounterDetails
-{
-
-}
-
-struct MonsterByMonsterStuff
-{
-
-}
-
-// todo: move serde derives to Encounter struct when complete
-// todo: this shouldn't all be public once fully encounter functionality is in
+// todo: fix level of public exposure
 #[derive(Serialize, Deserialize)]
-pub struct PotentialEncounter
+pub struct Encounter
 {
         // int is the number of that monster in the group
         pub groups: Vec<(u8, Monster)>,
@@ -91,11 +76,9 @@ pub struct PotentialEncounter
         // remove monster or group without reroll
         // add specific monster or group
         // complexity for new generations is: [complexity], change complexity
-
-
 }
 
-impl PotentialEncounter
+impl Encounter
 {
         // should probably refactor this to use monster index so we don't need to run another loop
         // small vec though
@@ -115,7 +98,7 @@ impl PotentialEncounter
                 self.groups.remove(remove_index);
         }
 
-        fn merge_encounter(&mut self, encounter_to_add: &PotentialEncounter)
+        fn merge_encounter(&mut self, encounter_to_add: &Encounter)
         {
                 // add the points together
                 self.current_monster_points += encounter_to_add.current_monster_points;
@@ -150,7 +133,7 @@ impl PotentialEncounter
 }
 
 
-fn generate_potential_encounter(the_beastiary: &mut Beastiary) -> PotentialEncounter
+fn generate_potential_encounter(the_beastiary: &mut Beastiary) -> Encounter
 {
         let number_of_easy_monsters = find_number_of_easy_monsters();
 
@@ -195,7 +178,7 @@ fn list_suitably_challenging_monsters(the_beastiary: &mut Beastiary, difficulty:
         suitably_challenging_monsters
 }
 
-fn generate_easy_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
+fn generate_easy_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> Encounter
 {
         println!("EASY");
         // generate a potential pool of easy monsters
@@ -207,7 +190,7 @@ fn generate_easy_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters
         potential_encounter_builder(&suitably_challenging_monsters, number_of_easy_monsters)
 }
 
-fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> PotentialEncounter
+fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monsters: u8, complexity: u8) -> Encounter
 {
         println!("MIXED");
         let mut rng = rand::thread_rng();
@@ -305,7 +288,7 @@ fn generate_mixed_monsters(the_beastiary: &mut Beastiary, number_of_easy_monster
         easy_monsters
 }
 
-fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> PotentialEncounter
+fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> Encounter
 {
         println!("HARD");
         let hard_solos = list_suitably_challenging_monsters(the_beastiary, HARD, complexity);
@@ -314,7 +297,7 @@ fn generate_hard_solo(the_beastiary: &mut Beastiary, complexity: u8) -> Potentia
 }
 
 // TODO: add error handling for being passed a vec with no monsters in it
-fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> PotentialEncounter
+fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Encounter
 {
         // if the beastiary is small, or certain monsters are added in an order that
         // does not allow group expansion or new monsters, we will infinite loop, need to break
@@ -451,7 +434,7 @@ fn potential_encounter_builder(monsters: &Vec<Monster>, budget: u8) -> Potential
                 if loop_guard >= 1000 { break; }
         }
 
-        PotentialEncounter{groups, current_monster_points, monster_points_cap}
+        Encounter {groups, current_monster_points, monster_points_cap}
 }
 
 fn compare_complexity(creature_complexity: &str, desired_complexity: u8) -> bool
