@@ -31,7 +31,6 @@ pub fn generate_encounter(the_beastiary: &mut Beastiary)
 {
         let working_encounter = generate_potential_encounter(the_beastiary);
 
-
         // TODO: debug / delete
         println!("Displaying ecounter:");
         display_encounter(working_encounter);
